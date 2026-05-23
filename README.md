@@ -1,43 +1,66 @@
 # FamaIA
 
-Portal de curiosidades sobre celebridades brasileiras com conteúdo gerado por IA (Claude `claude-haiku-4-5`). Apenas entretenimento.
+Portal de curiosidades sobre celebridades brasileiras com conteúdo gerado por IA (`claude-haiku-4-5`). Apenas entretenimento.
 
 > ⚠️ **Disclaimer:** Os textos das seções são especulativos e gerados por IA. Não representam fatos verificáveis sobre as pessoas retratadas.
 
 ## Stack
 
 - **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
-- **Prisma 6** + **SQLite** (cache local de conteúdo gerado)
+- **Prisma 6** + **PostgreSQL** (cache de conteúdo gerado)
 - **Anthropic SDK** (`@anthropic-ai/sdk`)
 
-## Setup local
+## Deploy completo pelo celular (Neon + Vercel)
+
+Você precisa de uma conta no [GitHub](https://github.com/) (que já existe), no [Neon](https://neon.tech/) (Postgres grátis) e na [Vercel](https://vercel.com/) (hospedagem grátis). Tudo pelo navegador.
+
+### 1. Banco no Neon
+
+1. Acesse https://neon.tech e faça login com o GitHub.
+2. Crie um projeto novo (region preferencialmente `AWS US East (N. Virginia)`).
+3. Na tela do projeto, copie a **Connection string** (formato: `postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require`). Guarde — você vai colar na Vercel no passo 2.
+
+### 2. Deploy na Vercel
+
+1. Acesse https://vercel.com e faça login com o GitHub.
+2. **Add New → Project** → selecione o repositório `leandrormartins/teste`.
+3. Em **Configure Project**, abra **Environment Variables** e adicione:
+   - `ANTHROPIC_API_KEY` → sua chave do console.anthropic.com
+   - `DATABASE_URL` → a connection string do Neon
+4. Clique **Deploy**. A Vercel roda `prisma migrate deploy` automaticamente (criando as tabelas no Neon) e depois `next build`.
+5. Quando terminar, abra a URL gerada (`https://teste-xxx.vercel.app`).
+
+### 3. Popular o banco (uma vez)
+
+A home vai aparecer vazia porque o banco ainda não tem famosos. Para popular:
+
+1. No painel do Neon, abra **SQL Editor**.
+2. Cole o conteúdo de [`prisma/seed.sql`](prisma/seed.sql) e execute.
+3. Volte na URL da Vercel e dê F5 — os 5 famosos vão aparecer.
+
+Para adicionar mais famosos depois: use a página `/admin` no próprio site.
+
+## Setup local (opcional)
+
+Se quiser rodar localmente em algum momento:
 
 ```bash
-# 1. Instalar deps
-npm install
-
-# 2. Configurar variáveis
 cp .env.example .env
-# edite .env e coloque seu ANTHROPIC_API_KEY (https://console.anthropic.com/)
-
-# 3. Migrar e popular o banco (5 famosos fictícios de exemplo)
-npm run db:migrate
-
-# 4. Rodar
+# edite .env com ANTHROPIC_API_KEY e DATABASE_URL (Postgres)
+npm install
+npm run db:migrate    # aplica schema + roda seed
 npm run dev
 ```
-
-Acesse `http://localhost:3000`.
 
 ## Scripts
 
 | Script | Função |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm run db:migrate` | Aplica migrations + seed (idempotente) |
-| `npm run db:seed` | Roda só o seed |
-| `npm run db:studio` | Abre o Prisma Studio para inspecionar o banco |
+| `npm run build` | Aplica migrations no banco e faz build de produção |
+| `npm run db:migrate` | Migrations + seed para dev local |
+| `npm run db:seed` | Só o seed via Prisma (Node) |
+| `npm run db:studio` | Prisma Studio para inspecionar o banco |
 
 ## Estrutura
 
@@ -47,7 +70,7 @@ src/
 │   ├── page.tsx                     # Home: hero + busca + grid + categorias
 │   ├── famoso/[slug]/page.tsx       # Perfil: foto + 4 seções com Suspense
 │   ├── categoria/[nome]/page.tsx    # Lista filtrada por categoria
-│   └── admin/                       # Cadastro de novos famosos (Server Action)
+│   └── admin/                       # Cadastro via Server Action
 ├── components/                      # Header, Footer, FamosoCard, SecaoBlock
 └── lib/
     ├── db.ts                        # Singleton PrismaClient
@@ -56,9 +79,10 @@ src/
     └── categorias.ts                # Categorias do menu
 
 prisma/
-├── schema.prisma                    # Famoso + Conteudo
+├── schema.prisma                    # Famoso + Conteudo (Postgres)
 ├── migrations/                      # Migrations versionadas
-└── seed.ts                          # 5 famosos fictícios
+├── seed.ts                          # Seed via Prisma (para uso local)
+└── seed.sql                         # Seed em SQL puro (para colar no Neon)
 ```
 
 ## Como o cache funciona
@@ -67,9 +91,9 @@ Cada combinação `(famosoId, seção)` é cacheada por **7 dias** na tabela `Co
 
 1. `gerarConteudo(famoso, secao)` consulta o cache primeiro.
 2. Se `geradoEm` < 7 dias → retorna o texto cacheado.
-3. Senão → chama a API Claude (`claude-haiku-4-5`), faz upsert e retorna.
+3. Senão → chama a API Claude, faz upsert e retorna.
 
-O perfil tem 4 seções (`amorosa`, `patrimonio`, `curiosidades`, `polemicas`) e usa `<Suspense>` para que cada bloco apareça assim que pronto (streaming).
+O perfil tem 4 seções (`amorosa`, `patrimonio`, `curiosidades`, `polemicas`) e usa `<Suspense>` — cada bloco aparece assim que pronto, sem travar a página inteira.
 
 ## Guardrails da IA
 
@@ -80,16 +104,4 @@ O system prompt em `src/lib/ai.ts` impõe **regras invioláveis**:
 - Sem difamação (acusações criminais, sexuais, médicas, financeiras).
 - 2-3 parágrafos curtos, máximo ~200 palavras.
 
-O disclaimer global está fixo no footer.
-
-## Cadastrando novos famosos
-
-Vá em `/admin`, preencha nome + categoria + URL da foto. Slug é gerado automaticamente. O conteúdo das seções é gerado na primeira visita ao perfil.
-
-> Para usar fotos de outros domínios, adicione o host em `next.config.mjs` (`images.remotePatterns`).
-
-## Deploy na Vercel
-
-1. Push do repositório para o GitHub.
-2. Importe na Vercel.
-3. Configure as env vars: `ANTHROPIC_API_KEY` e `DATABASE_URL` (Vercel não persiste SQLite — para produção, troque por Postgres/Turso e atualize `provider` em `schema.prisma`).
+Disclaimer global fixo no footer do site.
