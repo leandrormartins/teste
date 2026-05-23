@@ -5,8 +5,6 @@ import { SECAO_LABELS, type Secao } from "@/lib/secoes";
 
 const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
 
-const client = new Anthropic();
-
 const SYSTEM_PROMPT = `Você é um redator de uma revista de entretenimento brasileira. Produz textos curtos, leves e curiosos sobre celebridades — no estilo de uma coluna de fofoca, mas SEM inventar fatos verificáveis.
 
 REGRAS INVIOLÁVEIS:
@@ -17,12 +15,18 @@ REGRAS INVIOLÁVEIS:
 5. Português brasileiro, 2 a 3 parágrafos curtos, máximo 200 palavras no total.
 6. NÃO inclua disclaimer ao final — apenas o texto da seção.`;
 
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_client) _client = new Anthropic();
+  return _client;
+}
+
 async function gerarTextoViaClaude(famoso: Famoso, secao: Secao): Promise<string> {
   const label = SECAO_LABELS[secao];
   const nome = famoso.nome.slice(0, 120);
   const categoria = famoso.categoria.slice(0, 60);
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 600,
     system: SYSTEM_PROMPT,
@@ -45,6 +49,16 @@ export async function gerarConteudo(famoso: Famoso, secao: Secao): Promise<strin
   const cache = await prisma.conteudo.findUnique({
     where: { famosoId_secao: { famosoId: famoso.id, secao } },
   });
+
+  const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
+
+  // Sem chave da API: sempre serve o cache (ignora TTL) ou mostra placeholder.
+  if (!hasApiKey) {
+    return (
+      cache?.texto ??
+      "Esta seção ainda não tem conteúdo. Configure ANTHROPIC_API_KEY para gerar via IA, ou insira manualmente na tabela Conteudo."
+    );
+  }
 
   if (cache && Date.now() - cache.geradoEm.getTime() < SETE_DIAS_MS) {
     return cache.texto;
