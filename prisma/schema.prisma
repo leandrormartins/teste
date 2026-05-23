@@ -1,13 +1,34 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// FamaIA — schema do banco
+// SQLite (Prisma não suporta enums em SQLite — usamos String para `secao`
+// e validamos no app via `src/lib/secoes.ts`).
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Famoso {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  nome      String
+  categoria String
+  fotoUrl   String
+  createdAt DateTime   @default(now())
+  conteudos Conteudo[]
+}
+
+model Conteudo {
+  id       String   @id @default(cuid())
+  famosoId String
+  secao    String
+  texto    String
+  geradoEm DateTime @default(now())
+  famoso   Famoso   @relation(fields: [famosoId], references: [id], onDelete: Cascade)
+
+  @@unique([famosoId, secao])
+  @@index([famosoId])
 }
