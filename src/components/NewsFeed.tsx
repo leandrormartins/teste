@@ -24,7 +24,7 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
     <section>
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-xl font-bold text-gray-900">Nas notícias</h2>
-        <span className="text-xs text-gray-500">via Google News</span>
+        <span className="text-xs text-gray-500">via RSS de veículos brasileiros</span>
       </div>
       <div className="-mx-4 overflow-x-auto px-4">
         <ul className="flex snap-x snap-mandatory gap-3 pb-2">
