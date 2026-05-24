@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Noticia } from "@/lib/news";
+import { imgProxy } from "@/lib/img-proxy";
 
 function tempoRelativo(dataStr: string): string {
   if (!dataStr) return "";
@@ -37,7 +38,7 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
                   <div className="aspect-video w-full overflow-hidden bg-gray-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={item.image}
+                      src={imgProxy(item.image) ?? ""}
                       alt=""
                       loading="lazy"
                       className="h-full w-full object-cover"

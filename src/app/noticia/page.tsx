@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchNoticiaDetalhe } from "@/lib/news-detail";
+import { imgProxy } from "@/lib/img-proxy";
 
 type SearchParams = { url?: string };
 
@@ -56,7 +57,7 @@ export default async function NoticiaPage({
       {detalhe.image && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={detalhe.image}
+          src={imgProxy(detalhe.image) ?? ""}
           alt={detalhe.title}
           className="max-h-96 w-full rounded-xl bg-gray-100 object-cover"
         />
