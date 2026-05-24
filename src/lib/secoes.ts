@@ -9,6 +9,13 @@ export const SECAO_LABELS: Record<Secao, string> = {
   polemicas: "Polêmicas Recentes",
 };
 
+export const SECAO_EMOJI: Record<Secao, string> = {
+  amorosa: "💖",
+  patrimonio: "💰",
+  curiosidades: "💡",
+  polemicas: "🔥",
+};
+
 export function isSecao(value: string): value is Secao {
   return (SECOES as readonly string[]).includes(value);
 }
