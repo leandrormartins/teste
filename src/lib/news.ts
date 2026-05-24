@@ -21,6 +21,7 @@ export type Noticia = {
   source: string;
   pubDate: string;
   image: string | null;
+  description: string;
 };
 
 function stripCdata(raw: string): string {
@@ -38,20 +39,16 @@ function decode(raw: string): string {
 }
 
 function extractImage(itemXml: string): string | null {
-  // media:thumbnail
   const thumb = itemXml.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)?.[1];
   if (thumb) return thumb;
-  // media:content type="image/..."
   const content = itemXml.match(
     /<media:content[^>]+url=["']([^"']+)["'][^>]*type=["']image\//i,
   )?.[1];
   if (content) return content;
-  // enclosure type="image/..."
   const enclosure = itemXml.match(
     /<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image\//i,
   )?.[1];
   if (enclosure) return enclosure;
-  // <img> dentro de description ou content:encoded
   const desc =
     itemXml.match(/<description>([\s\S]*?)<\/description>/)?.[1] ??
     itemXml.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/)?.[1] ??
@@ -59,6 +56,13 @@ function extractImage(itemXml: string): string | null {
   const cleaned = stripCdata(desc);
   const imgSrc = cleaned.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
   return imgSrc ?? null;
+}
+
+function extractDescription(itemXml: string): string {
+  const raw = itemXml.match(/<description>([\s\S]*?)<\/description>/)?.[1] ?? "";
+  const cleaned = stripCdata(raw);
+  const noTags = cleaned.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return decode(noTags);
 }
 
 async function fetchFonte(fonte: { nome: string; url: string }): Promise<Noticia[]> {
@@ -82,12 +86,14 @@ async function fetchFonte(fonte: { nome: string; url: string }): Promise<Noticia
         const link = decode(stripCdata(linkRaw));
         const pubDate = stripCdata(pubRaw);
         const image = extractImage(item);
+        const description = extractDescription(item);
         return {
           title,
           link,
           source: fonte.nome,
           pubDate,
           image,
+          description,
         };
       })
       .filter((n) => n.title && n.link);
@@ -101,7 +107,6 @@ export async function fetchNoticias(limit = 12): Promise<Noticia[]> {
   const lotes = await Promise.all(FONTES.map((f) => fetchFonte(f)));
   const todas = lotes.flat();
 
-  // Dedupe por link
   const visto = new Set<string>();
   const unicas = todas.filter((n) => {
     if (visto.has(n.link)) return false;
@@ -109,7 +114,6 @@ export async function fetchNoticias(limit = 12): Promise<Noticia[]> {
     return true;
   });
 
-  // Ordena por data desc
   unicas.sort((a, b) => {
     const ta = new Date(a.pubDate).getTime();
     const tb = new Date(b.pubDate).getTime();

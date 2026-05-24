@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { buscar } from "@/lib/famosos";
-import { fetchNoticias } from "@/lib/news";
+import { fetchNoticiasComFamosos } from "@/lib/news-per-celeb";
 import { FamosoCard } from "@/components/FamosoCard";
 import { NewsFeed } from "@/components/NewsFeed";
 import { CATEGORIAS } from "@/lib/categorias";
@@ -10,7 +10,7 @@ type SearchParams = { q?: string };
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const q = (searchParams.q ?? "").trim();
   const famosos = buscar(q);
-  const noticias = await fetchNoticias();
+  const noticias = await fetchNoticiasComFamosos(12);
 
   return (
     <div className="space-y-10">

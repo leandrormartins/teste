@@ -1,12 +1,6 @@
-// Notícias filtradas pelo nome de uma celebridade.
-//
-// Em vez de buscar no Google News (que devolve URLs criptografadas e
-// sem thumb), filtramos o mesmo pool agregado dos RSS de veículos
-// brasileiros usado pelo feed da home. Vantagens: thumbs reais e
-// URLs diretas que abrem em /noticia. Trade-off: só aparecem celebs
-// mencionadas nos veículos que estamos agregando — celebridades
-// sem cobertura recente vão mostrar feed vazio.
+// Notícias filtradas por celebridade(s) da nossa base.
 
+import { FAMOSOS } from "./famosos";
 import { fetchNoticias, type Noticia } from "./news";
 
 // Considera só palavras com 4+ chars (evita "Jr.", "Maia", "Vieira"
@@ -24,9 +18,17 @@ function matchNome(title: string, nome: string): boolean {
   return palavras.every((p) => titleLower.includes(p));
 }
 
+// Notícias para uma celebridade específica (perfil)
 export async function fetchNoticiasDe(nome: string): Promise<Noticia[]> {
   if (!nome) return [];
-  // Puxa um pool maior pra ter chance de match por celeb
   const pool = await fetchNoticias(100);
   return pool.filter((n) => matchNome(n.title, nome)).slice(0, 8);
+}
+
+// Notícias que mencionam QUALQUER um dos 50 famosos da base (home feed)
+export async function fetchNoticiasComFamosos(limit = 12): Promise<Noticia[]> {
+  const pool = await fetchNoticias(100);
+  return pool
+    .filter((n) => FAMOSOS.some((f) => matchNome(n.title, f.nome)))
+    .slice(0, limit);
 }

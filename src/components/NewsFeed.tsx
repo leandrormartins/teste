@@ -9,18 +9,18 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
   return (
     <section>
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-xl font-bold text-gray-900">Nas notícias</h2>
+        <h2 className="text-xl font-bold text-gray-900">Fofocas das celebridades</h2>
         <span className="text-xs text-gray-500">via RSS de veículos brasileiros</span>
       </div>
-      <ul className="space-y-3">
+      <ul className="grid gap-4 md:grid-cols-2">
         {items.map((item, i) => (
           <li key={i}>
             <Link
               href={`/noticia?url=${encodeURIComponent(item.link)}`}
-              className="flex gap-3 overflow-hidden rounded-xl bg-white p-3 ring-1 ring-gray-200 transition hover:ring-primary-200"
+              className="block overflow-hidden rounded-xl bg-white ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-primary-200"
             >
               {item.image ? (
-                <div className="h-20 w-28 shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-24 sm:w-36">
+                <div className="aspect-video w-full overflow-hidden bg-gray-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imgProxy(item.image) ?? ""}
@@ -30,16 +30,21 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
                   />
                 </div>
               ) : (
-                <div className="h-20 w-28 shrink-0 rounded-md bg-gradient-to-br from-primary-50 to-primary-100 sm:h-24 sm:w-36" />
+                <div className="aspect-video w-full bg-gradient-to-br from-primary-50 to-primary-100" />
               )}
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div className="p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                   {item.source || "Fonte"}
                 </p>
-                <h3 className="mt-1 line-clamp-3 text-sm font-semibold text-gray-900">
+                <h3 className="mt-1 line-clamp-2 text-base font-bold text-gray-900">
                   {item.title}
                 </h3>
-                <p className="mt-auto pt-2 text-xs text-gray-500">
+                {item.description && (
+                  <p className="mt-2 line-clamp-3 text-sm text-gray-600">
+                    {item.description}
+                  </p>
+                )}
+                <p className="mt-3 text-xs text-gray-500">
                   {tempoRelativo(item.pubDate)}
                 </p>
               </div>
