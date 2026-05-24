@@ -68,9 +68,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         </div>
         <div className="-mx-4 overflow-x-auto px-4">
           <ul className="flex snap-x snap-mandatory gap-3 pb-2">
-            {destaquesSemana.map((f) => (
+            {destaquesSemana.map((f, i) => (
               <li key={f.slug} className="w-56 shrink-0 snap-start sm:w-64">
-                <FamosoFeatureCard famoso={f} />
+                <FamosoFeatureCard famoso={f} rank={i + 1} />
               </li>
             ))}
           </ul>
