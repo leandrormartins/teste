@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Noticia } from "@/lib/news";
 
 function tempoRelativo(dataStr: string): string {
@@ -28,10 +29,8 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
         <ul className="flex snap-x snap-mandatory gap-3 pb-2">
           {items.map((item, i) => (
             <li key={i} className="w-72 shrink-0 snap-start">
-              <a
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={`/noticia?url=${encodeURIComponent(item.link)}`}
                 className="flex h-full flex-col rounded-xl bg-white p-4 ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-primary-200"
               >
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -43,7 +42,7 @@ export function NewsFeed({ items }: { items: Noticia[] }) {
                 <p className="mt-auto pt-3 text-xs text-gray-500">
                   {tempoRelativo(item.pubDate)}
                 </p>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
