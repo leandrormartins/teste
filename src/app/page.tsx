@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { buscar } from "@/lib/famosos";
+import { fetchNoticias } from "@/lib/news";
 import { FamosoCard } from "@/components/FamosoCard";
+import { NewsFeed } from "@/components/NewsFeed";
 import { CATEGORIAS } from "@/lib/categorias";
 
 type SearchParams = { q?: string };
 
-export default function HomePage({ searchParams }: { searchParams: SearchParams }) {
+export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const q = (searchParams.q ?? "").trim();
   const famosos = buscar(q);
+  const noticias = await fetchNoticias();
 
   return (
     <div className="space-y-10">
@@ -20,6 +23,8 @@ export default function HomePage({ searchParams }: { searchParams: SearchParams 
           revista, escrito por inteligência artificial. Só entretenimento.
         </p>
       </section>
+
+      <NewsFeed items={noticias} />
 
       <section>
         <div className="mb-4 flex items-baseline justify-between">
