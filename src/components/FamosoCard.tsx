@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { Famoso } from "@prisma/client";
+import type { Celebridade } from "@/lib/famosos";
 
-export function FamosoCard({ famoso }: { famoso: Famoso }) {
+export function FamosoCard({ famoso }: { famoso: Celebridade }) {
   return (
     <Link
       href={`/famoso/${famoso.slug}`}

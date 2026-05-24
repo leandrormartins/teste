@@ -1,14 +1,10 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { porCategoria } from "@/lib/famosos";
 import { FamosoCard } from "@/components/FamosoCard";
 
-export default async function CategoriaPage({ params }: { params: { nome: string } }) {
+export default function CategoriaPage({ params }: { params: { nome: string } }) {
   const categoria = decodeURIComponent(params.nome);
-
-  const famosos = await prisma.famoso.findMany({
-    where: { categoria },
-    orderBy: { createdAt: "desc" },
-  });
+  const famosos = porCategoria(categoria);
 
   return (
     <div className="space-y-6">
@@ -16,9 +12,7 @@ export default async function CategoriaPage({ params }: { params: { nome: string
         <Link href="/" className="text-sm text-primary hover:underline">
           &larr; Voltar
         </Link>
-        <h1 className="mt-1 text-3xl font-extrabold text-gray-900">
-          {categoria}
-        </h1>
+        <h1 className="mt-1 text-3xl font-extrabold text-gray-900">{categoria}</h1>
         <p className="text-sm text-gray-600">
           {famosos.length} {famosos.length === 1 ? "famoso" : "famosos"} nesta categoria.
         </p>
@@ -31,7 +25,7 @@ export default async function CategoriaPage({ params }: { params: { nome: string
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {famosos.map((f) => (
-            <FamosoCard key={f.id} famoso={f} />
+            <FamosoCard key={f.slug} famoso={f} />
           ))}
         </div>
       )}

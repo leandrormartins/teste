@@ -1,13 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
-import { prisma } from "@/lib/db";
-import { SecaoBlock, SecaoBlockSkeleton } from "@/components/SecaoBlock";
+import { porSlug } from "@/lib/famosos";
+import { SecaoBlock } from "@/components/SecaoBlock";
 import { SECOES } from "@/lib/secoes";
 
-export default async function FamosoPage({ params }: { params: { slug: string } }) {
-  const famoso = await prisma.famoso.findUnique({ where: { slug: params.slug } });
+export default function FamosoPage({ params }: { params: { slug: string } }) {
+  const famoso = porSlug(params.slug);
   if (!famoso) notFound();
 
   return (
@@ -42,9 +41,7 @@ export default async function FamosoPage({ params }: { params: { slug: string } 
 
       <div className="grid gap-4 md:grid-cols-2">
         {SECOES.map((secao) => (
-          <Suspense key={secao} fallback={<SecaoBlockSkeleton secao={secao} />}>
-            <SecaoBlock famoso={famoso} secao={secao} />
-          </Suspense>
+          <SecaoBlock key={secao} texto={famoso.conteudos[secao]} secao={secao} />
         ))}
       </div>
     </div>

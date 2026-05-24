@@ -1,21 +1,13 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { buscar } from "@/lib/famosos";
 import { FamosoCard } from "@/components/FamosoCard";
 import { CATEGORIAS } from "@/lib/categorias";
 
 type SearchParams = { q?: string };
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const q = (searchParams.q ?? "").trim();
-
-  const famosos = await prisma.famoso.findMany({
-    where: q ? { nome: { contains: q } } : undefined,
-    orderBy: { createdAt: "desc" },
-  });
+  const famosos = buscar(q);
 
   return (
     <div className="space-y-10">
@@ -48,7 +40,7 @@ export default async function HomePage({
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {famosos.map((f) => (
-              <FamosoCard key={f.id} famoso={f} />
+              <FamosoCard key={f.slug} famoso={f} />
             ))}
           </div>
         )}
