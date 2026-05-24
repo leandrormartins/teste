@@ -11,16 +11,15 @@ export type NoticiaDetalhe = {
 };
 
 const UA =
-  "Mozilla/5.0 (compatible; FamaIABot/1.0; +https://github.com/leandrormartins/teste)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
 
 function metaContent(html: string, key: string): string | null {
   const esc = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // <meta property="og:image" content="...">
   const r1 = new RegExp(
     `<meta[^>]+(?:property|name)=["']${esc}["'][^>]*\\bcontent=["']([^"']+)["']`,
     "i",
   );
-  // <meta content="..." property="og:image">
   const r2 = new RegExp(
     `<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${esc}["']`,
     "i",
@@ -48,43 +47,113 @@ function safeHost(u: string): string {
   }
 }
 
-export async function fetchNoticiaDetalhe(
-  googleNewsUrl: string,
-): Promise<NoticiaDetalhe | null> {
+// Imagens "lixo" típicas (logo Google News, gstatic, etc.) — não devem
+// virar thumb da matéria.
+function isJunkImage(url: string): boolean {
+  if (!url) return true;
+  const host = safeHost(url);
+  if (!host) return true;
+  return (
+    host === "news.google.com" ||
+    host.endsWith(".gstatic.com") ||
+    host === "gstatic.com" ||
+    host === "ssl.gstatic.com" ||
+    host === "lh3.googleusercontent.com" // logo padrão do Google News
+  );
+}
+
+// Tenta decodificar a URL embutida no token base64 do Google News.
+// Funciona para o formato antigo; URLs novas (criptografadas) retornam null.
+function tryDecodeGoogleNewsUrl(url: string): string | null {
+  const m = url.match(/news\.google\.com\/(?:rss\/)?articles\/([A-Za-z0-9_-]+)/);
+  if (!m) return null;
   try {
-    // 1. Segue redirect do Google News pra fonte
-    const first = await fetch(googleNewsUrl, {
+    let b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const buf = Buffer.from(b64, "base64");
+    const text = buf.toString("utf8");
+    const urlMatch = text.match(/https?:\/\/[^\s\x00-\x1f"<>]{8,}/);
+    if (!urlMatch) return null;
+    const candidate = urlMatch[0];
+    if (candidate.includes("news.google.com")) return null;
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
+async function buscarSourceUrl(googleNewsUrl: string): Promise<{
+  finalUrl: string;
+  html: string;
+} | null> {
+  // 1) tenta decodificar URL antiga direto
+  const decoded = tryDecodeGoogleNewsUrl(googleNewsUrl);
+  if (decoded) {
+    const res = await fetch(decoded, {
       redirect: "follow",
       headers: { "User-Agent": UA },
       next: { revalidate: 3600 },
     });
-    if (!first.ok) return null;
-
-    let finalUrl = first.url;
-    let html = await first.text();
-
-    // 2. Se ainda estamos no domínio do Google News, tenta extrair o link
-    //    real do HTML interstitial (Google News às vezes serve uma página
-    //    intermediária com o link como atributo).
-    if (finalUrl.includes("news.google.com")) {
-      const linkMatch =
-        html.match(/data-n-au=["']([^"']+)["']/) ??
-        html.match(/<a[^>]+jsname=["']tljFtd["'][^>]+href=["']([^"']+)["']/) ??
-        html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+url=([^"'>\s]+)/i);
-      if (linkMatch?.[1]) {
-        const second = await fetch(linkMatch[1], {
-          redirect: "follow",
-          headers: { "User-Agent": UA },
-          next: { revalidate: 3600 },
-        });
-        if (second.ok) {
-          finalUrl = second.url;
-          html = await second.text();
-        }
-      }
+    if (res.ok) {
+      return { finalUrl: res.url, html: await res.text() };
     }
+  }
 
-    // 3. Extrai metadados Open Graph (e fallbacks)
+  // 2) fetcha a URL do Google News com UA de browser real e segue redirect
+  const first = await fetch(googleNewsUrl, {
+    redirect: "follow",
+    headers: { "User-Agent": UA },
+    next: { revalidate: 3600 },
+  });
+  if (!first.ok) return null;
+  const firstUrl = first.url;
+  const firstHtml = await first.text();
+
+  // 3) se já fugiu do news.google.com, ótimo
+  if (!firstUrl.includes("news.google.com")) {
+    return { finalUrl: firstUrl, html: firstHtml };
+  }
+
+  // 4) ainda no Google News — tenta extrair o link real do HTML interstitial
+  const linkMatch =
+    firstHtml.match(
+      /<link[^>]+rel=["']canonical["'][^>]+href=["'](https?:[^"']+)["']/i,
+    ) ??
+    firstHtml.match(
+      /<a[^>]+jsname=["']tljFtd["'][^>]+href=["'](https?:[^"']+)["']/,
+    ) ??
+    firstHtml.match(/data-n-au=["'](https?:[^"']+)["']/) ??
+    firstHtml.match(
+      /<meta[^>]+http-equiv=["']refresh["'][^>]+url=(https?:[^"'>\s]+)/i,
+    );
+
+  if (linkMatch?.[1] && !linkMatch[1].includes("news.google.com")) {
+    const second = await fetch(linkMatch[1], {
+      redirect: "follow",
+      headers: { "User-Agent": UA },
+      next: { revalidate: 3600 },
+    });
+    if (second.ok) {
+      return { finalUrl: second.url, html: await second.text() };
+    }
+  }
+
+  // 5) deu ruim — não conseguimos sair do Google News
+  return null;
+}
+
+export async function fetchNoticiaDetalhe(
+  googleNewsUrl: string,
+): Promise<NoticiaDetalhe | null> {
+  try {
+    const resolved = await buscarSourceUrl(googleNewsUrl);
+    if (!resolved) return null;
+
+    // Se ainda assim caímos no Google News, abortamos
+    if (resolved.finalUrl.includes("news.google.com")) return null;
+
+    const { finalUrl, html } = resolved;
+
     const ogTitle =
       metaContent(html, "og:title") ?? metaContent(html, "twitter:title");
     const ogDesc =
@@ -96,9 +165,11 @@ export async function fetchNoticiaDetalhe(
 
     const title = ogTitle ? decodeEntities(ogTitle).trim() : "";
     const description = ogDesc ? decodeEntities(ogDesc).trim() : "";
-    const image = ogImage ? decodeEntities(ogImage).trim() : null;
-    const sourceHost = safeHost(finalUrl);
+    let image = ogImage ? decodeEntities(ogImage).trim() : null;
 
+    if (image && isJunkImage(image)) image = null;
+
+    const sourceHost = safeHost(finalUrl);
     if (!title) return null;
 
     return {
