@@ -1,72 +1,32 @@
-// Busca notícias recentes mencionando uma celebridade específica
-// usando o RSS de busca do Google News. Diferente de news.ts (que
-// agrega RSS direto de veículos), aqui o filtro é por nome — usamos
-// o agregador porque seria custoso varrer N feeds de veículos por celeb.
+// Notícias filtradas pelo nome de uma celebridade.
 //
-// Cards na UI levam direto pro Google News (target=_blank) — não tentamos
-// resolver pra fonte porque o token virou criptografado.
+// Em vez de buscar no Google News (que devolve URLs criptografadas e
+// sem thumb), filtramos o mesmo pool agregado dos RSS de veículos
+// brasileiros usado pelo feed da home. Vantagens: thumbs reais e
+// URLs diretas que abrem em /noticia. Trade-off: só aparecem celebs
+// mencionadas nos veículos que estamos agregando — celebridades
+// sem cobertura recente vão mostrar feed vazio.
 
-export type NoticiaCeleb = {
-  title: string;
-  source: string;
-  link: string;
-  pubDate: string;
-};
+import { fetchNoticias, type Noticia } from "./news";
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-  "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
-
-function stripCdata(raw: string): string {
-  return raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim();
-}
-
-function decode(raw: string): string {
-  return raw
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
-}
-
-export async function fetchNoticiasDe(nome: string): Promise<NoticiaCeleb[]> {
-  if (!nome) return [];
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(nome)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": UA },
-    });
-    if (!res.ok) return [];
-    const xml = await res.text();
-    const items = xml.match(/<item>[\s\S]*?<\/item>/g) ?? [];
-    return items
-      .map((item) => {
-        const titleRaw = item.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? "";
-        const linkRaw = item.match(/<link>([\s\S]*?)<\/link>/)?.[1] ?? "";
-        const pubRaw = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] ?? "";
-        const sourceRaw =
-          item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] ?? "";
-        const title = decode(stripCdata(titleRaw));
-        const link = decode(stripCdata(linkRaw));
-        const source = decode(stripCdata(sourceRaw));
-        const pubDate = stripCdata(pubRaw);
-        const cleanTitle = source
-          ? title.replace(
-              new RegExp(
-                `\\s*-\\s*${source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
-              ),
-              "",
-            )
-          : title;
-        return { title: cleanTitle, link, source, pubDate };
-      })
-      .filter((n) => n.title && n.link)
-      .slice(0, 8);
-  } catch (err) {
-    console.error("[news-per-celeb] erro:", err);
-    return [];
+// Considera só palavras com 4+ chars (evita "Jr.", "Maia", "Vieira"
+// como filtro fraco), exige que TODAS apareçam no título — assim
+// "Bruna Marquezine" não pega notícia genérica sobre Bruna alguma.
+function matchNome(title: string, nome: string): boolean {
+  const titleLower = title.toLowerCase();
+  const palavras = nome
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && w !== "junior" && w !== "fenomeno");
+  if (palavras.length === 0) {
+    return titleLower.includes(nome.toLowerCase());
   }
+  return palavras.every((p) => titleLower.includes(p));
+}
+
+export async function fetchNoticiasDe(nome: string): Promise<Noticia[]> {
+  if (!nome) return [];
+  // Puxa um pool maior pra ter chance de match por celeb
+  const pool = await fetchNoticias(100);
+  return pool.filter((n) => matchNome(n.title, nome)).slice(0, 8);
 }

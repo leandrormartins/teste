@@ -94,7 +94,7 @@ async function fetchFonte(fonte: { nome: string; url: string }): Promise<Noticia
   }
 }
 
-export async function fetchNoticias(): Promise<Noticia[]> {
+export async function fetchNoticias(limit = 12): Promise<Noticia[]> {
   const lotes = await Promise.all(FONTES.map((f) => fetchFonte(f)));
   const todas = lotes.flat();
 
@@ -113,5 +113,5 @@ export async function fetchNoticias(): Promise<Noticia[]> {
     return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
   });
 
-  return unicas.slice(0, 12);
+  return unicas.slice(0, limit);
 }
