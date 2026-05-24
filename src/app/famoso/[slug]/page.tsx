@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { porSlug } from "@/lib/famosos";
+import { fetchNoticiasDe } from "@/lib/news-per-celeb";
 import { imgProxy } from "@/lib/img-proxy";
 import { SecaoBlock } from "@/components/SecaoBlock";
+import { CelebNewsScroll } from "@/components/CelebNewsScroll";
 import { SECOES } from "@/lib/secoes";
 
-export default function FamosoPage({ params }: { params: { slug: string } }) {
+export default async function FamosoPage({ params }: { params: { slug: string } }) {
   const famoso = porSlug(params.slug);
   if (!famoso) notFound();
+
+  const noticias = await fetchNoticiasDe(famoso.nome);
 
   return (
     <div className="space-y-8">
@@ -36,6 +40,8 @@ export default function FamosoPage({ params }: { params: { slug: string } }) {
           </p>
         </div>
       </header>
+
+      <CelebNewsScroll items={noticias} nome={famoso.nome} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {SECOES.map((secao) => (
