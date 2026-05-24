@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { porSlug } from "@/lib/famosos";
+import { imgProxy } from "@/lib/img-proxy";
 import { SecaoBlock } from "@/components/SecaoBlock";
 import { SECOES } from "@/lib/secoes";
 
@@ -13,13 +13,11 @@ export default function FamosoPage({ params }: { params: { slug: string } }) {
     <div className="space-y-8">
       <header className="grid gap-6 rounded-2xl bg-white p-5 ring-1 ring-gray-200 md:grid-cols-[200px_1fr]">
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 md:w-[200px]">
-          <Image
-            src={famoso.fotoUrl}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imgProxy(famoso.fotoUrl) ?? famoso.fotoUrl}
             alt={famoso.nome}
-            fill
-            sizes="(max-width: 768px) 100vw, 200px"
-            className="object-cover"
-            priority
+            className="h-full w-full object-cover"
           />
         </div>
         <div className="flex flex-col justify-center">

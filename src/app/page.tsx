@@ -24,10 +24,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         </p>
       </section>
 
-      <NewsFeed items={noticias} />
-
       <section>
-        <div className="mb-4 flex items-baseline justify-between">
+        <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-xl font-bold text-gray-900">
             {q ? `Resultados para "${q}"` : "Famosos em destaque"}
           </h2>
@@ -43,13 +41,19 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             Nenhum famoso encontrado.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {famosos.map((f) => (
-              <FamosoCard key={f.slug} famoso={f} />
-            ))}
+          <div className="-mx-4 overflow-x-auto px-4">
+            <ul className="flex snap-x snap-mandatory gap-3 pb-2">
+              {famosos.map((f) => (
+                <li key={f.slug} className="w-40 shrink-0 snap-start">
+                  <FamosoCard famoso={f} />
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </section>
+
+      <NewsFeed items={noticias} />
 
       <section>
         <h2 className="mb-4 text-xl font-bold text-gray-900">Explorar por categoria</h2>
