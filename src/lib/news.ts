@@ -5,7 +5,10 @@
 // redirect nem extrair og:image em segunda chamada.
 
 const FONTES: Array<{ nome: string; url: string }> = [
-  { nome: "G1", url: "https://g1.globo.com/rss/g1/pop-arte/" },
+  { nome: "G1 Pop & Arte", url: "https://g1.globo.com/rss/g1/pop-arte/" },
+  { nome: "G1 Esportes", url: "https://g1.globo.com/rss/g1/esportes/" },
+  { nome: "ge", url: "https://ge.globo.com/feed/" },
+  { nome: "IstoÉ Gente", url: "https://istoe.com.br/feed/gente/" },
 ];
 
 const UA =
